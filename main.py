@@ -141,7 +141,7 @@ def train():
         with open(FLAGS.map_file, "rb") as f:
             char_to_id, id_to_char, tag_to_id, id_to_tag = pickle.load(f)
 
-    # prepare data, get a collection of list containing index
+    # prepare data, get a collection of list containing index序列处理，生成相应的序列【字list, 字index, 字123, bio的index】
     train_data = prepare_dataset(
         train_sentences, char_to_id, tag_to_id, FLAGS.lower
     )
@@ -164,7 +164,6 @@ def train():
     else:
         config = config_model(char_to_id, tag_to_id)
         save_config(config, FLAGS.config_file)
-    make_path(FLAGS)
 
     log_path = os.path.join("log", FLAGS.log_file)
     logger = get_logger(log_path)

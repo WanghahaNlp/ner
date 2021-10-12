@@ -121,18 +121,14 @@ def clean(params):
 
 
 def save_config(config, config_file):
-    """
-    Save configuration of the model
-    parameters are stored in json format
+    """保存json到文件
     """
     with open(config_file, "w", encoding="utf8") as f:
         json.dump(config, f, ensure_ascii=False, indent=4)
 
 
 def load_config(config_file):
-    """
-    Load configuration of the model
-    parameters are stored in json format
+    """加载json数据
     """
     with open(config_file, encoding="utf8") as f:
         return json.load(f)
