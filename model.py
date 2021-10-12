@@ -12,9 +12,11 @@ from data_utils import create_input, iobes_iob
 
 class Model(object):
     def __init__(self, config, is_train=True):
-
+        """"""
+        # 配置文件
         self.config = config
-        self.is_train = is_train
+        # 是否训练
+        self.is_train: bool = is_train
         
         self.lr = config["lr"]
         self.char_dim = config["char_dim"]
@@ -25,15 +27,19 @@ class Model(object):
         self.num_chars = config["num_chars"]
         self.num_segs = 4
 
+        # 创建三个变量
+        # 全局步骤
         self.global_step = tf.Variable(0, trainable=False)
+        # dev最优的f1值
         self.best_dev_f1 = tf.Variable(0.0, trainable=False)
+        # test最优的f1值
         self.best_test_f1 = tf.Variable(0.0, trainable=False)
+        # [ɪˈnɪʃəˌlaɪzə(r)]初始化
         self.initializer = initializers.xavier_initializer()
-        
         
 
         # add placeholders for the model
-
+        # 创建占位符
         self.char_inputs = tf.placeholder(dtype=tf.int32,
                                           shape=[None, None],
                                           name="ChatInputs")
@@ -47,9 +53,11 @@ class Model(object):
         # dropout keep prob
         self.dropout = tf.placeholder(dtype=tf.float32,
                                       name="Dropout")
-
+        # sign   -1 if x < 0 elif x == 0 0 else: 1    ; abs绝对值
         used = tf.sign(tf.abs(self.char_inputs))
+        # 求和，通过axis来进行按行还是列，reduction_indices（axis旧的版本）
         length = tf.reduce_sum(used, reduction_indices=1)
+        # 张量类型转换，eg：tf.int8->tf.int32
         self.lengths = tf.cast(length, tf.int32)
         self.batch_size = tf.shape(self.char_inputs)[0]
         self.num_steps = tf.shape(self.char_inputs)[-1]
@@ -69,6 +77,7 @@ class Model(object):
                 'dilation': 2
             },
         ]
+        # 过滤器的宽度\滤波器的宽度
         self.filter_width = 3
         self.num_filter = self.lstm_dim 
         self.embedding_dim = self.char_dim + self.seg_dim
@@ -87,7 +96,7 @@ class Model(object):
             # bi-directional lstm layer
             model_outputs = self.biLSTM_layer(model_inputs, self.lstm_dim, self.lengths)
 
-            # logits for tags
+            # logits for tags   logits:概率的意思
             self.logits = self.project_layer_bilstm(model_outputs)
         
         elif self.model_type == 'idcnn':
@@ -127,11 +136,13 @@ class Model(object):
         self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=5)
 
     def embedding_layer(self, char_inputs, seg_inputs, config, name=None):
-        """
-        :param char_inputs: one-hot encoding of sentence
-        :param seg_inputs: segmentation feature
-        :param config: wither use segmentation feature
-        :return: [1, num_steps, embedding size], 
+        """embedding层
+
+        Args:
+            char_inputs: 句子的one-hot编码(one-hot encoding of sentence)
+            seg_inputs: 配置文件加载函数(segmentation feature)
+            config: 配置文件加载函数(wither use segmentation feature)
+        return: [1, num_steps, embedding size]
         """
 
         embedding = []
@@ -171,6 +182,7 @@ class Model(object):
                 model_inputs,
                 dtype=tf.float32,
                 sequence_length=lengths)
+        # 前向lstm和后向lstm输出进行合并
         return tf.concat(outputs, axis=2)
     
     #IDCNN layer 

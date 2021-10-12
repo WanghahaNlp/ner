@@ -283,6 +283,8 @@ class BatchManager(object):
         self.len_data = len(self.batch_data)
 
     def sort_and_pad(self, data, batch_size):
+        '''将数据安装序列长度进行排序，升序
+        '''
         num_batch = int(math.ceil(len(data) /batch_size))
         sorted_data = sorted(data, key=lambda x: len(x[0]))
         batch_data = list()
@@ -292,6 +294,8 @@ class BatchManager(object):
 
     @staticmethod
     def pad_data(data):
+        '''保证每个批次数据长度统一
+        '''
         strings = []
         chars = []
         segs = []
