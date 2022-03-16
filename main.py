@@ -17,8 +17,8 @@ from data_utils import load_word2vec, create_input, input_from_line, BatchManage
 import os
 
 flags = tf.app.flags
-flags.DEFINE_boolean("clean", True, "clean train folder")  # 删除训练的文件夹
-flags.DEFINE_boolean("train", True, "Whether train the model")  # 是否训练模型
+flags.DEFINE_boolean("clean", False, "clean train folder")  # 删除训练的文件夹
+flags.DEFINE_boolean("train", False, "Whether train the model")  # 是否训练模型
 # configurations for the model 模型配置
 flags.DEFINE_integer("seg_dim", 20, "Embedding size for segmentation, 0 if not used")  # embedding size为分割，0如果不使用
 flags.DEFINE_integer("char_dim", 100, "Embedding size for characters")  # embedding size 为 字符集
@@ -38,12 +38,11 @@ flags.DEFINE_boolean("lower", True, "Wither lower case")  # 全部小写
 
 flags.DEFINE_integer("max_epoch", 100, "maximum training epochs")  # 最大的训练时期
 flags.DEFINE_integer("steps_check", 100, "steps per checkpoint")  # 每个检查点的步骤
-flags.DEFINE_string("ckpt_path", "ckpt", "Path to save model")  # 保存模型路径
+flags.DEFINE_string("ckpt_path", "name_ckpt", "Path to save model")  # 保存模型路径
 flags.DEFINE_string("summary_path", "summary", "Path to store summaries")  # 存储摘要的路径
-flags.DEFINE_string("log_file", "train.log", "File for log")  # 文件日志
-flags.DEFINE_string("map_file", "maps.pkl", "file for maps")  # 文件映射
-flags.DEFINE_string("vocab_file", "vocab.json", "File for vocab")  # 文件词汇
-flags.DEFINE_string("config_file", "config_file", "File for config")  # 文件配置文件
+flags.DEFINE_string("log_file", "name_ckpt/train.log", "File for log")  # 文件日志
+flags.DEFINE_string("map_file", "name_ckpt/maps.pkl", "file for maps")  # 文件映射
+flags.DEFINE_string("config_file", "name_ckpt/config_file", "File for config")  # 文件配置文件
 flags.DEFINE_string("script", "conlleval", "evaluation script")  # 评估脚本
 flags.DEFINE_string("result_path", "result", "Path for results")  # 路径为结果
 flags.DEFINE_string("emb_file", os.path.join("data", "vec.txt"), "Path for pre_trained embedding")  # pre_training嵌入的路径
@@ -218,14 +217,94 @@ def evaluate_line():
             print(result)
 
 
-def main(_):
-    if FLAGS.train:
-        if FLAGS.clean:
-            clean(FLAGS)
-        train()
-    else:
-        evaluate_line()
+# def main(_):
+#     if FLAGS.train:
+#         if FLAGS.clean:
+#             clean(FLAGS)
+#         train()
+#     else:
+#         evaluate_line()
+    
+
+# if __name__ == "__main__":
+#     tf.app.run(main)
 
 
-if __name__ == "__main__":
-    tf.app.run(main)
+class NERapi:
+    def __init__(self):
+        tf.reset_default_graph()
+        self.evaluate_line()
+    
+    def evaluate_line(self):
+
+        # 加载配置文件
+        config = load_config(FLAGS.config_file)
+        logger = get_logger(FLAGS.log_file)
+        # limit GPU memory
+        tf_config = tf.ConfigProto()
+        tf_config.gpu_options.allow_growth = True
+        with open(FLAGS.map_file, "rb") as f:
+            char_to_id, id_to_char, tag_to_id, id_to_tag = pickle.load(f)
+        sess = tf.Session(config=tf_config)
+        model = create_model(sess, Model, FLAGS.ckpt_path, load_word2vec, config, id_to_char, logger, False)
+
+        self.model = model
+        self.sess = sess
+        self.char_to_id = char_to_id
+        self.id_to_tag = id_to_tag
+    
+    def get_ner(self, line):
+        result = self.model.evaluate_line(self.sess, input_from_line(line, self.char_to_id), self.id_to_tag)
+        return result
+
+
+
+# n = NERapi()
+# while True:
+#     a = input("请输入:")
+#     print(n.get_ner(a))
+"""
+nohup command >> ./test.log 2>&1 &
+68908
+
+查看运行的后台进程<只在当前终端生效，关闭终端后就无法看到了>
+jobs -l
+
+ps -aux | grep main.py
+a: 显示所有程序
+u: 以用户为主的格式来显示
+x: 显示所有程序，不以终端机来区分
+显示的最后一个是自己
+
+ps -def | grep main.py | grep -v grep
+去除自己
+
+ps -aux | grep main.py | grep -v gerp | awk '{print $2}'
+显示进程id
+
+	
+lsof -i:8090
+查看使用某端口的进程
+
+查看到进程id之后，使用netstat命令查看其占用的端口
+netstat -ap|grep 8090
+查看进程占用的端口
+
+segmentation 分割
+dimension 维度
+optimizer 优化器
+schema  架构
+learning rate 学习率
+
+
+python main.py \
+    --emb_file=/home/wanglei/algorithm/ner/name_data/vec.txt \
+    --train_file=/home/wanglei/algorithm/ner/name_data/example.train \
+    --dev_file=/home/wanglei/algorithm/ner/name_data/example.dev \
+    --test_file=/home/wanglei/algorithm/ner/name_data/example.test
+
+flags.DEFINE_string("emb_file", os.path.join("data", "vec.txt"), "Path for pre_trained embedding")  # pre_training嵌入的路径
+flags.DEFINE_string("train_file", os.path.join("data", "example.train"), "Path for train data")  # 数据集路径
+flags.DEFINE_string("dev_file", os.path.join("data", "example.dev"), "Path for dev data")
+flags.DEFINE_string("test_file", os.path.join("data", "example.test"), "Path for test data")
+"""

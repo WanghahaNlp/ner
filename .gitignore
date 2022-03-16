@@ -2,3 +2,6 @@
 log/
 ckpt/
 result/
+__pycache__/
+data_file/
+name_data/

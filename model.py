@@ -36,7 +36,7 @@ class Model(object):
         self.best_test_f1 = tf.Variable(0.0, trainable=False)
         # [ɪˈnɪʃəˌlaɪzə(r)]初始化
         self.initializer = initializers.xavier_initializer()
-        
+
 
         # add placeholders for the model
         # 创建占位符
@@ -61,9 +61,7 @@ class Model(object):
         self.lengths = tf.cast(length, tf.int32)
         self.batch_size = tf.shape(self.char_inputs)[0]
         self.num_steps = tf.shape(self.char_inputs)[-1]
-        
-        
-        #Add model type by crownpku， bilstm or idcnn
+        # Add model type by crownpku， bilstm or idcnn
         self.model_type = config['model_type']
         #parameters for idcnn
         self.layers = [
@@ -83,9 +81,8 @@ class Model(object):
         self.embedding_dim = self.char_dim + self.seg_dim
         self.repeat_times = 4
         self.cnn_output_width = 0
-        
-        
 
+        # segmentation: 分割；      representation: 表示
         # embeddings for chinese character and segmentation representation
         embedding = self.embedding_layer(self.char_inputs, self.seg_inputs, config)
 
@@ -96,9 +93,9 @@ class Model(object):
             # bi-directional lstm layer
             model_outputs = self.biLSTM_layer(model_inputs, self.lstm_dim, self.lengths)
 
-            # logits for tags   logits:概率的意思
+            # logits for tags   logits:概率
             self.logits = self.project_layer_bilstm(model_outputs)
-        
+
         elif self.model_type == 'idcnn':
             # apply dropout before feed to idcnn layer
             model_inputs = tf.nn.dropout(embedding, self.dropout)
@@ -108,7 +105,7 @@ class Model(object):
 
             # logits for tags
             self.logits = self.project_layer_idcnn(model_outputs)
-        
+
         else:
             raise KeyError
 
@@ -181,7 +178,9 @@ class Model(object):
                 lstm_cell["backward"],
                 model_inputs,
                 dtype=tf.float32,
-                sequence_length=lengths)
+                sequence_length=lengths
+            )
+        outputs = ((outputs[0] + 0.5 * outputs[1]) / 1.5, (0.7 * outputs[0] + outputs[1]) / 1.7)
         # 前向lstm和后向lstm输出进行合并
         return tf.concat(outputs, axis=2)
     
@@ -199,13 +198,12 @@ class Model(object):
         with tf.variable_scope("idcnn" if not name else name):
             shape=[1, self.filter_width, self.embedding_dim,
                        self.num_filter]
-            print(shape)
             filter_weights = tf.get_variable(
                 "idcnn_filter",
                 shape=[1, self.filter_width, self.embedding_dim,
                        self.num_filter],
                 initializer=self.initializer)
-            
+
             """
             shape of input = [batch, in_height, in_width, in_channels]
             shape of filter = [filter_height, filter_width, in_channels, out_channels]
@@ -256,24 +254,29 @@ class Model(object):
         """
         with tf.variable_scope("project"  if not name else name):
             with tf.variable_scope("hidden"):
+                # [200, 100]
                 W = tf.get_variable("W", shape=[self.lstm_dim*2, self.lstm_dim],
                                     dtype=tf.float32, initializer=self.initializer)
-
+                # [100, 1]
                 b = tf.get_variable("b", shape=[self.lstm_dim], dtype=tf.float32,
                                     initializer=tf.zeros_initializer())
+                # [None, 200]
                 output = tf.reshape(lstm_outputs, shape=[-1, self.lstm_dim*2])
+                # [None, 100]
                 hidden = tf.tanh(tf.nn.xw_plus_b(output, W, b))
 
             # project to score of tags
             with tf.variable_scope("logits"):
+                # [100, 13]
                 W = tf.get_variable("W", shape=[self.lstm_dim, self.num_tags],
                                     dtype=tf.float32, initializer=self.initializer)
-
+                # [13, 1]
                 b = tf.get_variable("b", shape=[self.num_tags], dtype=tf.float32,
                                     initializer=tf.zeros_initializer())
-
+                # [None, 13]
                 pred = tf.nn.xw_plus_b(hidden, W, b)
 
+            # [-1, None, 13]
             return tf.reshape(pred, [-1, self.num_steps, self.num_tags])
     
     #Project layer for idcnn by crownpku
@@ -406,7 +409,7 @@ class Model(object):
         return results
 
     def evaluate_line(self, sess, inputs, id_to_tag):
-        trans = self.trans.eval()
+        trans = self.trans.eval(session=sess)
         lengths, scores = self.run_step(sess, False, inputs)
         batch_paths = self.decode(scores, lengths, trans)
         tags = [id_to_tag[idx] for idx in batch_paths[0]]
