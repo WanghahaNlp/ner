@@ -227,5 +227,5 @@ def main(_):
         evaluate_line()
 
 
-if __name__ == "__main__":
-    tf.app.run(main)
+# if __name__ == "__main__":
+#     tf.app.run(main)
